@@ -420,7 +420,17 @@ def derive_btc_addresses(
     start: int = 0,
     count: int = 5,
     hrp: str = "bc",
+    coin_type: int | None = None,
 ):
+    if coin_type is None:
+        if hrp == "bc":
+            coin_type = 0
+        elif hrp == "tb":
+            coin_type = 1
+        else:
+            raise ValueError("Unsupported hrp for default coin type; use bc/tb or set coin_type")
+
+    _require_index_range("coin_type", coin_type)
     _require_index_range("account", account)
     _require_index_range("change", change)
     _require_index_range("start", start)
@@ -431,7 +441,7 @@ def derive_btc_addresses(
 
     results = []
     for i in range(start, start + count):
-        path = f"m/84'/0'/{account}'/{change}/{i}"
+        path = f"m/84'/{coin_type}'/{account}'/{change}/{i}"
         point = derive_pubkey_at(mnemonic, passphrase, path)
         pubkey_compressed = serP(point, compressed=True)
         address = btc_p2wpkh_address(pubkey_compressed, hrp=hrp)

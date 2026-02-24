@@ -4,7 +4,7 @@
 Offline watch-only derivation tool:
 - Input: BIP39 mnemonic (+ optional passphrase)
 - Output:
-  * BTC bech32 (BIP84, m/84'/0'/0'/0/i) addresses
+  * BTC bech32 (BIP84, mainnet m/84'/0'/..., testnet m/84'/1'/...) addresses
   * ETH (BIP44, m/44'/60'/0'/0/i) addresses
 
 This script intentionally delegates derivation logic to `wallet_core.py`
@@ -90,6 +90,7 @@ def main():
     parser.add_argument(
         "--btc-hrp",
         default="bc",
+        choices=("bc", "tb"),
         help="bech32 HRP (mainnet=bc, testnet=tb)",
     )
     parser.add_argument("--btc-account", type=uint31_arg("--btc-account"), default=0)
@@ -129,6 +130,7 @@ def main():
                 start=args.btc_start,
                 count=args.btc_count,
                 hrp=args.btc_hrp,
+                coin_type=0 if args.btc_hrp == "bc" else 1,
             )
             for path, addr, cpub in btc:
                 print(f"{path}  |  {addr}  |  pubkey(compressed)={cpub}")

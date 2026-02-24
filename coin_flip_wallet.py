@@ -198,7 +198,10 @@ def main():
     python coin_flip_wallet.py --interactive --passphrase "my secret phrase"
 
   更安全：从 stdin 读取密码短语:
-    echo "my secret phrase" | python coin_flip_wallet.py --interactive --passphrase-stdin
+    echo "my secret phrase" | python coin_flip_wallet.py --hex <64位hex> --passphrase-stdin --yes
+
+  交互模式建议使用隐藏输入:
+    python coin_flip_wallet.py --interactive --passphrase-prompt
 """,
     )
     group = parser.add_mutually_exclusive_group(required=True)
@@ -235,10 +238,15 @@ def main():
         help="跳过启动时按 Enter 确认（适合批量非交互运行）",
     )
     args = parser.parse_args()
+    if args.interactive and args.passphrase_stdin:
+        parser.error(
+            "--interactive 不能与 --passphrase-stdin 同时使用；"
+            "请改用 --passphrase-prompt。"
+        )
 
     try:
         check_crypto_dependencies()
-        show_security_warning(require_confirmation=not args.yes)
+        show_security_warning(require_confirmation=not args.yes and not args.passphrase_stdin)
 
         collector = EntropyCollector(coins_per_flip=4)
         passphrase = resolve_passphrase(args)
@@ -267,6 +275,9 @@ def main():
         sys.exit(1)
     except RuntimeError as e:
         print(f"❌ 运行时错误: {e}")
+        sys.exit(1)
+    except EOFError:
+        print("❌ 输入流已结束：交互模式需要终端输入。若脚本化请使用 --hex。")
         sys.exit(1)
     except KeyboardInterrupt:
         print("\n\n⚠️  用户中断操作")
