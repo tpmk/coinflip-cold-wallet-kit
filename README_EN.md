@@ -248,9 +248,5 @@ You are fully responsible for any real-asset risk when using this project.
 
 ## 12. Reference File Provenance
 
-- `bip39-standalone.html` is kept as a reference-only offline artifact and is not used by the core derivation path.
-- Upstream source: `iancoleman/bip39`  
-  Repo: https://github.com/iancoleman/bip39  
-  Releases: https://github.com/iancoleman/bip39/releases/latest/
-- Embedded version marker in the file: `v0.5.6` (page `.version` text)
-- Current file SHA256: `129b03505824879b8a4429576e3de6951c8599644c1afcaae80840f79237695a`
+- `bip39-standalone.html` source repo: `iancoleman/bip39` (https://github.com/iancoleman/bip39)
+- `wordlist.txt` source repo: `iancoleman/bip39` (https://github.com/iancoleman/bip39), SHA256: `2f5eed53a4727b4bf8880d8f3f199efc90e58503646d9ff8eff3a2ed3b24dbda`

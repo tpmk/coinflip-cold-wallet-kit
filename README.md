@@ -195,7 +195,7 @@ echo "my secret" | uv run python derive_addresses_offline.py \
 - `--eth-account` / `--eth-start`
 - `--btc-hrp`：`bc` 或 `tb`
 
-## 7. 安全上手流程（建议照做）
+## 7. 安全上手流程
 
 1. 准备离线环境（断网/Live OS/专用机）
 2. 执行 `uv sync --dev`
@@ -276,9 +276,5 @@ uv run python -m pytest -q
 
 ## 12. 参考文件来源
 
-- `bip39-standalone.html` 仅作为离线参考文件，不参与本项目核心派生逻辑。
-- 来源项目：`iancoleman/bip39`  
-  仓库：https://github.com/iancoleman/bip39  
-  发布页：https://github.com/iancoleman/bip39/releases/latest/
-- 本仓库文件内嵌版本标记：`v0.5.6`（页面内 `.version` 文本）
-- 当前文件 SHA256：`129b03505824879b8a4429576e3de6951c8599644c1afcaae80840f79237695a`
+- `bip39-standalone.html` 来源仓库：`iancoleman/bip39`（https://github.com/iancoleman/bip39）
+- `wordlist.txt` 来源仓库：`iancoleman/bip39`（https://github.com/iancoleman/bip39），SHA256：`2f5eed53a4727b4bf8880d8f3f199efc90e58503646d9ff8eff3a2ed3b24dbda`
