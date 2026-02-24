@@ -1,0 +1,40 @@
+# 敏感文件 - 熵值和私钥相关
+*entropy*
+*seed*
+*mnemonic*
+*private*
+my_*.txt
+
+# 保留词库文件
+!wordlist.txt
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.pytest_tmp/
+pytest-cache-files/
+pytest-cache-files*/
+.mypy_cache/
+*.so
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# 虚拟环境
+venv/
+.venv/
+env/
+ENV/
+
+# 日志
+*.log
