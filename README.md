@@ -1,5 +1,7 @@
 # CoinFlip Cold Wallet Kit
 
+[English README](README_EN.md)
+
 离线钱包工具集：从熵值生成 BIP39 助记词，并派生 BTC/ETH 地址。  
 项目采用 `uv` 管理依赖，默认以“离线、安全、可验证”为使用前提。
 
