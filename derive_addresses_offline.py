@@ -13,7 +13,7 @@ to avoid duplicate cryptographic implementations across tools.
 
 import argparse
 
-from wallet_core import derive_btc_addresses, derive_eth_addresses
+from wallet_core import derive_btc_addresses, derive_eth_addresses, validate_mnemonic
 
 
 def main():
@@ -47,6 +47,8 @@ def main():
     if args.btc_count == 0 and args.eth_count == 0:
         print("Nothing to do. Specify --btc-count and/or --eth-count > 0")
         return
+
+    validate_mnemonic(args.mnemonic)
 
     if args.btc_count > 0:
         print("=== BTC (BIP84 P2WPKH) ===")

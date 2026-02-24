@@ -173,11 +173,9 @@ def read_wordlist(wordlist_path="wordlist.txt"):
 
 
 def is_hex(s: str) -> bool:
-    try:
-        int(s, 16)
-        return True
-    except ValueError:
+    if not s:
         return False
+    return all(c in "0123456789abcdefABCDEF" for c in s)
 
 
 def bits_from_hex(hex_str: str) -> str:
@@ -208,7 +206,7 @@ def entropy_to_mnemonic(hex_entropy: str, wordlist_path="wordlist.txt") -> str:
     if not is_hex(hex_entropy):
         raise ValueError("Invalid hex string")
     if len(hex_entropy) not in VALID_NIBBLES:
-        raise ValueError(f"Hex entropy must be {VALID_NIBBLES} characters, got {len(hex_entropy)}")
+        raise ValueError(f"Hex entropy must be {sorted(VALID_NIBBLES)} characters, got {len(hex_entropy)}")
 
     wordlist = read_wordlist(wordlist_path)
     ent_bits = bits_from_hex(hex_entropy)
@@ -217,6 +215,40 @@ def entropy_to_mnemonic(hex_entropy: str, wordlist_path="wordlist.txt") -> str:
         raise ValueError("Full bit string is not divisible by 11")
     indices = split_to_11(full_bits)
     return " ".join(wordlist[idx] for idx in indices)
+
+
+def validate_mnemonic(mnemonic: str, wordlist_path="wordlist.txt") -> None:
+    """Validate a BIP39 mnemonic: word count, wordlist membership, and checksum."""
+    wordlist = read_wordlist(wordlist_path)
+    word_map = {w: i for i, w in enumerate(wordlist)}
+    words = unicodedata.normalize("NFKD", mnemonic.strip()).split()
+
+    valid_word_counts = {12, 15, 18, 21, 24}
+    if len(words) not in valid_word_counts:
+        raise ValueError(
+            f"Mnemonic must be {sorted(valid_word_counts)} words, got {len(words)}"
+        )
+
+    indices = []
+    for i, w in enumerate(words):
+        if w not in word_map:
+            raise ValueError(f"Word #{i + 1} '{w}' is not in the BIP39 wordlist")
+        indices.append(word_map[w])
+
+    # Reconstruct bits and verify checksum
+    bits = "".join(bin(idx)[2:].zfill(11) for idx in indices)
+    total_bits = len(bits)
+    cs_len = total_bits // 33  # CS = ENT / 32, total = ENT + CS = 33 * CS
+    ent_len = total_bits - cs_len
+
+    ent_bits = bits[:ent_len]
+    cs_bits = bits[ent_len:]
+
+    ent_bytes = int(ent_bits, 2).to_bytes(ent_len // 8, "big")
+    expected_cs = bin(sha256(ent_bytes)[0])[2:].zfill(8)[:cs_len]
+
+    if cs_bits != expected_cs:
+        raise ValueError("Mnemonic checksum mismatch — possible typo")
 
 
 def mnemonic_to_seed(mnemonic: str, passphrase: str = "") -> bytes:
@@ -229,11 +261,13 @@ def mnemonic_to_seed(mnemonic: str, passphrase: str = "") -> bytes:
 def bip32_master_key(seed: bytes):
     i = hmac_sha512(b"Bitcoin seed", seed)
     il, ir = i[:32], i[32:]
-    k = bytes_to_int(il) % N
-    if k == 0:
+    il_int = bytes_to_int(il)
+    if il_int >= N:
+        raise ValueError("Invalid master key: parse256(IL) >= n (BIP32 spec)")
+    if il_int == 0:
         raise ValueError("Invalid master key (zero)")
-    pub = scalar_mult(k, G)
-    return k, pub, ir
+    pub = scalar_mult(il_int, G)
+    return il_int, pub, ir
 
 
 def ckd_priv(k_parent: int, c_parent: bytes, index: int):
@@ -246,7 +280,10 @@ def ckd_priv(k_parent: int, c_parent: bytes, index: int):
 
     i = hmac_sha512(c_parent, data)
     il, ir = i[:32], i[32:]
-    k_child = (bytes_to_int(il) + k_parent) % N
+    il_int = bytes_to_int(il)
+    if il_int >= N:
+        raise ValueError("Invalid child key: parse256(IL) >= n (BIP32 spec)")
+    k_child = (il_int + k_parent) % N
     if k_child == 0:
         raise ValueError("Derived zero key")
     return k_child, ir
@@ -258,7 +295,7 @@ def derive_priv_path(k: int, c: bytes, path: str):
     if not path.startswith("m/"):
         raise ValueError("Path must start with m/")
 
-    segments = path.lstrip("m/").split("/")
+    segments = path[2:].split("/")
     k_current, c_current = k, c
     for seg in segments:
         if seg.endswith("'"):
@@ -392,6 +429,7 @@ def derive_eth_addresses(
 __all__ = [
     "entropy_to_mnemonic",
     "mnemonic_to_seed",
+    "validate_mnemonic",
     "derive_btc_addresses",
     "derive_eth_addresses",
     "derive_pubkey_at",
