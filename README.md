@@ -277,4 +277,4 @@ uv run python -m pytest -q
 ## 12. 参考文件来源
 
 - `bip39-standalone.html` 来源仓库：`iancoleman/bip39`（https://github.com/iancoleman/bip39）
-- `wordlist.txt` 来源仓库：`iancoleman/bip39`（https://github.com/iancoleman/bip39），SHA256：`2f5eed53a4727b4bf8880d8f3f199efc90e58503646d9ff8eff3a2ed3b24dbda`
+- `wordlist.txt` 来源仓库：`bitcoin/bips`（https://github.com/bitcoin/bips/blob/master/bip-0039/english.txt）, SHA256: `2f5eed53a4727b4bf8880d8f3f199efc90e58503646d9ff8eff3a2ed3b24dbda`

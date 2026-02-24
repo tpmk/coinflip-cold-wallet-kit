@@ -249,4 +249,4 @@ You are fully responsible for any real-asset risk when using this project.
 ## 12. Reference File Provenance
 
 - `bip39-standalone.html` source repo: `iancoleman/bip39` (https://github.com/iancoleman/bip39)
-- `wordlist.txt` source repo: `iancoleman/bip39` (https://github.com/iancoleman/bip39), SHA256: `2f5eed53a4727b4bf8880d8f3f199efc90e58503646d9ff8eff3a2ed3b24dbda`
+- `wordlist.txt` source repo: `bitcoin/bips`（https://github.com/bitcoin/bips/blob/master/bip-0039/english.txt）, SHA256: `2f5eed53a4727b4bf8880d8f3f199efc90e58503646d9ff8eff3a2ed3b24dbda`
