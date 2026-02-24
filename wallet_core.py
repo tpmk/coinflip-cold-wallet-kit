@@ -16,6 +16,8 @@ G = (Gx, Gy)
 
 VALID_ENTS = {128, 160, 192, 224, 256}
 VALID_NIBBLES = {e // 4 for e in VALID_ENTS}
+MAX_NON_HARDENED_INDEX = 0x7FFFFFFF
+MAX_BIP32_INDEX = 0xFFFFFFFF
 BECH32_CHARSET = "qpzry9x8gf2tvdw0s3jn54khce6mua7l"
 PROJECT_DIR = Path(__file__).resolve().parent
 # Reference source: https://github.com/bitcoin/bips/blob/master/bip-0039/english.txt
@@ -106,6 +108,11 @@ def ser256(i: int) -> bytes:
     return int_to_bytes(i, 32)
 
 
+def _require_index_range(name: str, value: int, upper: int = MAX_NON_HARDENED_INDEX) -> None:
+    if value < 0 or value > upper:
+        raise ValueError(f"{name} must be between 0 and {upper}, got {value}")
+
+
 def point_add(pt, qt):
     if pt is None:
         return qt
@@ -160,13 +167,14 @@ def read_wordlist(wordlist_path="wordlist.txt"):
             f"Wordlist file not found: {path}\n"
             "Please ensure wordlist.txt (2048 English words) exists."
         )
-    actual_hash = hashlib.sha256(path.read_bytes()).hexdigest()
+    raw = path.read_bytes()
+    actual_hash = hashlib.sha256(raw).hexdigest()
     if actual_hash != BIP39_ENGLISH_WORDLIST_SHA256:
         raise ValueError(
             "Wordlist SHA256 mismatch. "
             f"expected={BIP39_ENGLISH_WORDLIST_SHA256}, got={actual_hash}"
         )
-    words = [w.strip() for w in path.read_text(encoding="utf-8").splitlines() if w.strip()]
+    words = [w.strip() for w in raw.decode("utf-8").splitlines() if w.strip()]
     if len(words) != 2048:
         raise ValueError(f"Wordlist must have exactly 2048 words, got {len(words)}")
     return words
@@ -179,7 +187,7 @@ def is_hex(s: str) -> bool:
 
 
 def bits_from_hex(hex_str: str) -> str:
-    hex_str = hex_str.lower().replace("0x", "")
+    hex_str = hex_str.lower().removeprefix("0x")
     if len(hex_str) % 2 != 0:
         hex_str = "0" + hex_str
     data = bytes.fromhex(hex_str)
@@ -202,7 +210,7 @@ def split_to_11(full_bits: str):
 
 
 def entropy_to_mnemonic(hex_entropy: str, wordlist_path="wordlist.txt") -> str:
-    hex_entropy = hex_entropy.lower().replace("0x", "").strip()
+    hex_entropy = hex_entropy.strip().lower().removeprefix("0x")
     if not is_hex(hex_entropy):
         raise ValueError("Invalid hex string")
     if len(hex_entropy) not in VALID_NIBBLES:
@@ -271,6 +279,13 @@ def bip32_master_key(seed: bytes):
 
 
 def ckd_priv(k_parent: int, c_parent: bytes, index: int):
+    """BIP32 child key derivation (private).
+
+    Spec deviation: BIP32 says if parse256(IL) >= n or ki == 0, proceed
+    with the next index.  We raise ValueError instead because the
+    probability is ~1/2^128 and silently skipping to a different index
+    would change the derived path without the caller's knowledge.
+    """
     hardened = index >= 0x80000000
     if hardened:
         data = b"\x00" + ser256(k_parent) + struct.pack(">L", index)
@@ -299,9 +314,13 @@ def derive_priv_path(k: int, c: bytes, path: str):
     k_current, c_current = k, c
     for seg in segments:
         if seg.endswith("'"):
-            idx = int(seg[:-1]) | 0x80000000
+            raw_idx = int(seg[:-1])
+            _require_index_range("hardened index", raw_idx)
+            idx = raw_idx | 0x80000000
         else:
             idx = int(seg)
+            _require_index_range("non-hardened index", idx)
+        _require_index_range("BIP32 index", idx, upper=MAX_BIP32_INDEX)
         k_current, c_current = ckd_priv(k_current, c_current, idx)
     return k_current, c_current
 
@@ -355,7 +374,10 @@ def convertbits(data, frombits, tobits, pad=True):
 
 
 def encode_segwit_address(hrp, witver, witprog):
-    data = [witver] + convertbits(witprog, 8, 5)
+    ret = convertbits(witprog, 8, 5)
+    if ret is None:
+        raise ValueError("convertbits failed: invalid witness program")
+    data = [witver] + ret
     return bech32_encode(hrp, data)
 
 
@@ -399,6 +421,14 @@ def derive_btc_addresses(
     count: int = 5,
     hrp: str = "bc",
 ):
+    _require_index_range("account", account)
+    _require_index_range("change", change)
+    _require_index_range("start", start)
+    if count < 0:
+        raise ValueError(f"count must be >= 0, got {count}")
+    if count > 0:
+        _require_index_range("last index", start + count - 1)
+
     results = []
     for i in range(start, start + count):
         path = f"m/84'/0'/{account}'/{change}/{i}"
@@ -416,6 +446,13 @@ def derive_eth_addresses(
     start: int = 0,
     count: int = 5,
 ):
+    _require_index_range("account", account)
+    _require_index_range("start", start)
+    if count < 0:
+        raise ValueError(f"count must be >= 0, got {count}")
+    if count > 0:
+        _require_index_range("last index", start + count - 1)
+
     results = []
     for i in range(start, start + count):
         path = f"m/44'/60'/{account}'/0/{i}"

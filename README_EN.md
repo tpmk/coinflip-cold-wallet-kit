@@ -111,6 +111,12 @@ uv run python coin_flip_wallet.py --hex <64-hex>
 
 # Non-interactive batch mode (skip Enter confirmation)
 uv run python coin_flip_wallet.py --hex <64-hex> --yes
+
+# Safer: read passphrase from stdin
+echo "my secret" | uv run python coin_flip_wallet.py --hex <64-hex> --yes --passphrase-stdin
+
+# Safer: hidden passphrase prompt
+uv run python coin_flip_wallet.py --interactive --passphrase-prompt
 ```
 
 Arguments:
@@ -118,7 +124,9 @@ Arguments:
 - `--interactive`, `-i`
 - `--hex`
 - `--wordlist` (default: `wordlist.txt`)
-- `--passphrase`
+- `--passphrase` (HIGH RISK: visible in process list and shell history)
+- `--passphrase-stdin` (recommended for scripts)
+- `--passphrase-prompt` (recommended for interactive sessions)
 - `--yes`
 
 Output:
@@ -149,12 +157,19 @@ uv run python derive_addresses_offline.py \
   --mnemonic "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about" \
   --btc-count 3 \
   --eth-count 3
+
+# Safer: read passphrase from stdin
+echo "my secret" | uv run python derive_addresses_offline.py \
+  --mnemonic "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about" \
+  --btc-count 3 \
+  --passphrase-stdin
 ```
 
 Key arguments:
 
 - `--mnemonic` (required)
-- `--passphrase`
+- `--passphrase` (optional, HIGH RISK on shared systems)
+- `--passphrase-stdin` / `--passphrase-prompt` (safer alternatives)
 - `--btc-count`, `--eth-count` (at least one > 0)
 - `--btc-account`, `--btc-change`, `--btc-start`, `--btc-hrp`
 - `--eth-account`, `--eth-start`
@@ -230,3 +245,12 @@ uv sync --dev
 
 For education and technical research only.  
 You are fully responsible for any real-asset risk when using this project.
+
+## 12. Reference File Provenance
+
+- `bip39-standalone.html` is kept as a reference-only offline artifact and is not used by the core derivation path.
+- Upstream source: `iancoleman/bip39`  
+  Repo: https://github.com/iancoleman/bip39  
+  Releases: https://github.com/iancoleman/bip39/releases/latest/
+- Embedded version marker in the file: `v0.5.6` (page `.version` text)
+- Current file SHA256: `129b03505824879b8a4429576e3de6951c8599644c1afcaae80840f79237695a`

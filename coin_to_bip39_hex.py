@@ -39,12 +39,12 @@ def load_bits(args):
 
 def load_hex(args):
     if args.hex is not None:
-        hex_s = args.hex.strip().lower().replace("0x", "")
+        hex_s = args.hex.strip().lower().removeprefix("0x")
     elif args.hex_file is not None:
         path = Path(args.hex_file)
         if not path.exists():
             sys.exit(f"hex file not found: {path}")
-        hex_s = path.read_text(encoding="utf-8").strip().lower().replace("0x", "")
+        hex_s = path.read_text(encoding="utf-8").strip().lower().removeprefix("0x")
     else:
         return None
 
@@ -74,15 +74,18 @@ def main():
     if hex_s is None:
         hex_s = bits_to_hex(bits_s)
 
-    ent_bits = core.bits_from_hex(hex_s)
-    ent_bits_len = len(ent_bits)
-    cs_len = ent_bits_len // 32
-    full_bits = core.add_checksum(ent_bits)
-    idxs = core.split_to_11(full_bits)
     mnemonic = entropy_to_mnemonic(hex_s, args.wordlist)
 
+    # Derive display values arithmetically (no duplicate crypto ops)
+    ent_bits_len = len(hex_s) * 4
+    cs_len = ent_bits_len // 32
+    total_bits = ent_bits_len + cs_len
+    wordlist = core.read_wordlist(args.wordlist)
+    word_map = {w: i for i, w in enumerate(wordlist)}
+    idxs = [word_map[w] for w in mnemonic.split()]
+
     print("=== BIP39 Conversion ===")
-    print(f"ENT = {ent_bits_len} bits, CS = {cs_len} bits, Total = {len(full_bits)} bits")
+    print(f"ENT = {ent_bits_len} bits, CS = {cs_len} bits, Total = {total_bits} bits")
     print("Indexes (11-bit):")
     print(",".join(map(str, idxs)))
     print("\nMnemonic:")

@@ -117,6 +117,12 @@ uv run python coin_flip_wallet.py --hex <64位hex>
 
 # 批量非交互（跳过 Enter 确认）
 uv run python coin_flip_wallet.py --hex <64位hex> --yes
+
+# 安全方式：从 stdin 读取密码短语
+echo "my secret" | uv run python coin_flip_wallet.py --hex <64位hex> --yes --passphrase-stdin
+
+# 安全方式：隐藏输入密码短语
+uv run python coin_flip_wallet.py --interactive --passphrase-prompt
 ```
 
 参数说明：
@@ -124,7 +130,9 @@ uv run python coin_flip_wallet.py --hex <64位hex> --yes
 - `--interactive`, `-i`：交互输入 0/1 比特
 - `--hex`：64 位 hex 熵值
 - `--wordlist`：词库路径，默认 `wordlist.txt`
-- `--passphrase`：BIP39 passphrase（可选）
+- `--passphrase`：BIP39 passphrase（高风险：会出现在进程列表和历史命令中）
+- `--passphrase-stdin`：从标准输入读取 passphrase（推荐脚本）
+- `--passphrase-prompt`：通过隐藏输入读取 passphrase（推荐交互）
 - `--yes`：跳过启动时 Enter 确认（用于脚本场景）
 
 输出内容：
@@ -169,12 +177,19 @@ uv run python derive_addresses_offline.py \
   --mnemonic "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about" \
   --btc-count 3 \
   --eth-count 3
+
+# 安全方式：从 stdin 读取密码短语
+echo "my secret" | uv run python derive_addresses_offline.py \
+  --mnemonic "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about" \
+  --btc-count 3 \
+  --passphrase-stdin
 ```
 
 参数说明（核心）：
 
 - `--mnemonic`：必填
-- `--passphrase`：可选
+- `--passphrase`：可选（高风险：会暴露到命令历史和进程列表）
+- `--passphrase-stdin` / `--passphrase-prompt`：更安全的 passphrase 输入方式
 - `--btc-count` / `--eth-count`：需要大于 0 才会输出
 - `--btc-account` / `--btc-change` / `--btc-start`
 - `--eth-account` / `--eth-start`
@@ -258,3 +273,12 @@ uv run python -m pytest -q
 
 本项目仅用于学习和技术研究。  
 涉及真实资产时，风险由使用者自行承担。建议优先使用经过长期审计的成熟硬件钱包方案。
+
+## 12. 参考文件来源
+
+- `bip39-standalone.html` 仅作为离线参考文件，不参与本项目核心派生逻辑。
+- 来源项目：`iancoleman/bip39`  
+  仓库：https://github.com/iancoleman/bip39  
+  发布页：https://github.com/iancoleman/bip39/releases/latest/
+- 本仓库文件内嵌版本标记：`v0.5.6`（页面内 `.version` 文本）
+- 当前文件 SHA256：`129b03505824879b8a4429576e3de6951c8599644c1afcaae80840f79237695a`

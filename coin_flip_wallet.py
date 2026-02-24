@@ -10,6 +10,7 @@ CLI layer only:
 """
 
 import argparse
+import getpass
 import sys
 
 from wallet_core import (
@@ -20,6 +21,7 @@ from wallet_core import (
     keccak_256,
     mnemonic_to_seed,
     ripemd160,
+    validate_mnemonic,
 )
 
 
@@ -66,7 +68,7 @@ class EntropyCollector:
         return hex_entropy
 
     def collect_batch(self, hex_input: str) -> str:
-        hex_cleaned = hex_input.lower().replace("0x", "").strip()
+        hex_cleaned = hex_input.strip().lower().removeprefix("0x")
         if not is_hex(hex_cleaned):
             raise ValueError("Invalid hex string: must contain only 0-9 and a-f")
         if len(hex_cleaned) != 64:
@@ -163,6 +165,23 @@ def check_crypto_dependencies():
         print()
 
 
+def resolve_passphrase(args) -> str:
+    if args.passphrase_stdin:
+        if sys.stdin.isatty():
+            raise ValueError("--passphrase-stdin 需要通过管道提供输入")
+        return sys.stdin.readline().rstrip("\r\n")
+    if args.passphrase_prompt:
+        return getpass.getpass("请输入 BIP39 密码短语（可留空）: ")
+    if args.passphrase is not None:
+        print(
+            "WARNING: --passphrase 会暴露在进程列表和历史命令中；"
+            "建议改用 --passphrase-stdin 或 --passphrase-prompt。",
+            file=sys.stderr,
+        )
+        return args.passphrase
+    return ""
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="硬币熵钱包生成器 - 完全离线的BTC/ETH钱包生成工具",
@@ -175,8 +194,11 @@ def main():
   批量模式:
     python coin_flip_wallet.py --hex a3f7c2e9b1d486520fa3e7c1b9d2f5e8a4c6d1f3b7e2a5c8d9f1e4b6a2c7d3f8
 
-  使用密码短语:
+  使用密码短语（高风险，不推荐命令行明文）:
     python coin_flip_wallet.py --interactive --passphrase "my secret phrase"
+
+  更安全：从 stdin 读取密码短语:
+    echo "my secret phrase" | python coin_flip_wallet.py --interactive --passphrase-stdin
 """,
     )
     group = parser.add_mutually_exclusive_group(required=True)
@@ -188,7 +210,25 @@ def main():
     )
     group.add_argument("--hex", type=str, help="批量模式：直接提供64位十六进制熵值")
     parser.add_argument("--wordlist", default="wordlist.txt", help="BIP39词库文件路径（默认: wordlist.txt）")
-    parser.add_argument("--passphrase", default="", help="BIP39可选密码短语（默认为空，增加安全性）")
+    passphrase_group = parser.add_mutually_exclusive_group()
+    passphrase_group.add_argument(
+        "--passphrase",
+        default=None,
+        help=(
+            "BIP39可选密码短语（高风险：命令行参数会暴露在进程列表和历史命令中；"
+            "建议使用 --passphrase-stdin 或 --passphrase-prompt）"
+        ),
+    )
+    passphrase_group.add_argument(
+        "--passphrase-stdin",
+        action="store_true",
+        help="从stdin读取BIP39密码短语（推荐脚本场景）",
+    )
+    passphrase_group.add_argument(
+        "--passphrase-prompt",
+        action="store_true",
+        help="通过隐藏输入交互读取BIP39密码短语（推荐交互场景）",
+    )
     parser.add_argument(
         "--yes",
         action="store_true",
@@ -201,6 +241,7 @@ def main():
         show_security_warning(require_confirmation=not args.yes)
 
         collector = EntropyCollector(coins_per_flip=4)
+        passphrase = resolve_passphrase(args)
         if args.interactive:
             entropy_hex = collector.collect_interactive()
         else:
@@ -208,11 +249,12 @@ def main():
 
         print("\n正在生成助记词...")
         mnemonic = entropy_to_mnemonic(entropy_hex, args.wordlist)
+        validate_mnemonic(mnemonic, args.wordlist)
 
         print("正在派生地址...")
-        btc_receive = derive_btc_addresses(mnemonic, args.passphrase, account=0, change=0, start=0, count=5)
-        btc_change = derive_btc_addresses(mnemonic, args.passphrase, account=0, change=1, start=0, count=2)
-        eth_addrs = derive_eth_addresses(mnemonic, args.passphrase, account=0, start=0, count=5)
+        btc_receive = derive_btc_addresses(mnemonic, passphrase, account=0, change=0, start=0, count=5)
+        btc_change = derive_btc_addresses(mnemonic, passphrase, account=0, change=1, start=0, count=2)
+        eth_addrs = derive_eth_addresses(mnemonic, passphrase, account=0, start=0, count=5)
 
         format_output(entropy_hex, mnemonic, btc_receive, btc_change, eth_addrs)
         show_completion_reminder()
