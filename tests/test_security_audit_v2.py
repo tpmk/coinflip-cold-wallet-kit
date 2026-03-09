@@ -3,7 +3,6 @@
 import shutil
 import subprocess
 import sys
-import uuid
 from pathlib import Path
 
 import pytest
@@ -28,10 +27,8 @@ class TestConvertbitsNoneCheck:
 class TestReadWordlistSingleRead:
     """N-02: read_wordlist should not call read_text (single-read via read_bytes + decode)."""
 
-    def test_no_read_text_called(self):
-        temp_dir = core.PROJECT_DIR / "tests" / f".tmp-wordlist-read-{uuid.uuid4().hex}"
-        temp_dir.mkdir(parents=True, exist_ok=False)
-        wordlist_copy = temp_dir / "wordlist.txt"
+    def test_no_read_text_called(self, tmp_path):
+        wordlist_copy = tmp_path / "wordlist.txt"
         shutil.copy(core.PROJECT_DIR / "wordlist.txt", wordlist_copy)
 
         # Patch read_text to detect if it is called on our file
@@ -51,7 +48,6 @@ class TestReadWordlistSingleRead:
             assert not called["v"], "read_text was called — expected only read_bytes + decode"
         finally:
             Path.read_text = old
-            shutil.rmtree(temp_dir, ignore_errors=True)
 
 
 class TestCoinFlipValidatesMnemonic:
