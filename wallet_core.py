@@ -18,6 +18,7 @@ VALID_ENTS = {128, 160, 192, 224, 256}
 VALID_NIBBLES = {e // 4 for e in VALID_ENTS}
 MAX_NON_HARDENED_INDEX = 0x7FFFFFFF
 MAX_BIP32_INDEX = 0xFFFFFFFF
+MAX_DERIVE_COUNT = 10000
 BECH32_CHARSET = "qpzry9x8gf2tvdw0s3jn54khce6mua7l"
 PROJECT_DIR = Path(__file__).resolve().parent
 # Reference source: https://github.com/bitcoin/bips/blob/master/bip-0039/english.txt
@@ -434,6 +435,8 @@ def derive_btc_addresses(
     _require_index_range("start", start)
     if count < 0:
         raise ValueError(f"count must be >= 0, got {count}")
+    if count > MAX_DERIVE_COUNT:
+        raise ValueError(f"count must be <= {MAX_DERIVE_COUNT}, got {count}")
     if count > 0:
         _require_index_range("last index", start + count - 1)
 
@@ -458,6 +461,8 @@ def derive_eth_addresses(
     _require_index_range("start", start)
     if count < 0:
         raise ValueError(f"count must be >= 0, got {count}")
+    if count > MAX_DERIVE_COUNT:
+        raise ValueError(f"count must be <= {MAX_DERIVE_COUNT}, got {count}")
     if count > 0:
         _require_index_range("last index", start + count - 1)
 

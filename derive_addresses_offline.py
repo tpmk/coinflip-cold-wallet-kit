@@ -18,6 +18,7 @@ import sys
 from wallet_core import derive_btc_addresses, derive_eth_addresses, validate_mnemonic
 
 UINT31_MAX = 0x7FFFFFFF
+MAX_DERIVE_COUNT = 10000
 
 
 def uint31_arg(flag_name: str):
@@ -35,14 +36,16 @@ def uint31_arg(flag_name: str):
     return _parse
 
 
-def non_negative_arg(flag_name: str):
+def bounded_count_arg(flag_name: str):
     def _parse(value: str) -> int:
         try:
             parsed = int(value)
         except ValueError as exc:
             raise argparse.ArgumentTypeError(f"{flag_name} must be an integer") from exc
-        if parsed < 0:
-            raise argparse.ArgumentTypeError(f"{flag_name} must be >= 0")
+        if parsed < 0 or parsed > MAX_DERIVE_COUNT:
+            raise argparse.ArgumentTypeError(
+                f"{flag_name} must be between 0 and {MAX_DERIVE_COUNT}"
+            )
         return parsed
 
     return _parse
@@ -98,7 +101,7 @@ def main():
     parser.add_argument("--btc-start", type=uint31_arg("--btc-start"), default=0)
     parser.add_argument(
         "--btc-count",
-        type=non_negative_arg("--btc-count"),
+        type=bounded_count_arg("--btc-count"),
         default=0,
         help="how many BTC addresses to derive (0=skip)",
     )
@@ -106,7 +109,7 @@ def main():
     parser.add_argument("--eth-start", type=uint31_arg("--eth-start"), default=0)
     parser.add_argument(
         "--eth-count",
-        type=non_negative_arg("--eth-count"),
+        type=bounded_count_arg("--eth-count"),
         default=0,
         help="how many ETH addresses to derive (0=skip)",
     )

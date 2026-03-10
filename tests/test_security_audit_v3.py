@@ -50,3 +50,41 @@ class TestPointAddNoDeadCode:
         two_g = core.scalar_mult(2, core.G)
         three_g = core.scalar_mult(3, core.G)
         assert core.point_add(core.G, two_g) == three_g
+
+
+class TestCountUpperBound:
+    """N-06: CLI count args must have a reasonable upper bound."""
+
+    def test_derive_rejects_excessive_btc_count(self):
+        proc = run_script(
+            "derive_addresses_offline.py",
+            "--mnemonic", ABANDON_12,
+            "--btc-count", "10001",
+        )
+        assert proc.returncode != 0
+
+    def test_derive_rejects_excessive_eth_count(self):
+        proc = run_script(
+            "derive_addresses_offline.py",
+            "--mnemonic", ABANDON_12,
+            "--eth-count", "10001",
+        )
+        assert proc.returncode != 0
+
+    def test_derive_accepts_valid_count(self):
+        """A count within the limit is accepted by argparse and runs correctly."""
+        proc = run_script(
+            "derive_addresses_offline.py",
+            "--mnemonic", ABANDON_12,
+            "--btc-count", "1",
+        )
+        assert proc.returncode == 0, proc.stderr
+        assert "bc1q" in proc.stdout
+
+    def test_core_rejects_excessive_btc_count(self):
+        with pytest.raises(ValueError, match="count"):
+            core.derive_btc_addresses(ABANDON_12, "", count=10001)
+
+    def test_core_rejects_excessive_eth_count(self):
+        with pytest.raises(ValueError, match="count"):
+            core.derive_eth_addresses(ABANDON_12, "", count=10001)
