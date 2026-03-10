@@ -51,6 +51,22 @@ def bounded_count_arg(flag_name: str):
     return _parse
 
 
+def resolve_mnemonic(args, parser: argparse.ArgumentParser) -> str:
+    if args.mnemonic_stdin:
+        if sys.stdin.isatty():
+            parser.error("--mnemonic-stdin requires piped stdin input")
+        return sys.stdin.readline().rstrip("\r\n")
+    if args.mnemonic_prompt:
+        return getpass.getpass("Enter BIP39 mnemonic: ")
+    # --mnemonic (plaintext CLI arg)
+    print(
+        "WARNING: --mnemonic is visible in process list and shell history. "
+        "Prefer --mnemonic-stdin or --mnemonic-prompt.",
+        file=sys.stderr,
+    )
+    return args.mnemonic
+
+
 def resolve_passphrase(args, parser: argparse.ArgumentParser) -> str:
     if args.passphrase_stdin:
         if sys.stdin.isatty():
@@ -70,7 +86,25 @@ def resolve_passphrase(args, parser: argparse.ArgumentParser) -> str:
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--mnemonic", required=True, help="BIP39 mnemonic words")
+    mnemonic_group = parser.add_mutually_exclusive_group(required=True)
+    mnemonic_group.add_argument(
+        "--mnemonic",
+        default=None,
+        help=(
+            "BIP39 mnemonic words (WARNING: visible in process list and shell history; "
+            "prefer --mnemonic-stdin or --mnemonic-prompt)"
+        ),
+    )
+    mnemonic_group.add_argument(
+        "--mnemonic-stdin",
+        action="store_true",
+        help="Read BIP39 mnemonic from first line of stdin (recommended for scripts)",
+    )
+    mnemonic_group.add_argument(
+        "--mnemonic-prompt",
+        action="store_true",
+        help="Prompt mnemonic with hidden input (recommended for interactive use)",
+    )
     passphrase_group = parser.add_mutually_exclusive_group()
     passphrase_group.add_argument(
         "--passphrase",
@@ -114,6 +148,7 @@ def main():
         help="how many ETH addresses to derive (0=skip)",
     )
     args = parser.parse_args()
+    mnemonic = resolve_mnemonic(args, parser)
     passphrase = resolve_passphrase(args, parser)
 
     if args.btc_count == 0 and args.eth_count == 0:
@@ -121,12 +156,12 @@ def main():
         return
 
     try:
-        validate_mnemonic(args.mnemonic)
+        validate_mnemonic(mnemonic)
 
         if args.btc_count > 0:
             print("=== BTC (BIP84 P2WPKH) ===")
             btc = derive_btc_addresses(
-                args.mnemonic,
+                mnemonic,
                 passphrase,
                 account=args.btc_account,
                 change=args.btc_change,
@@ -142,7 +177,7 @@ def main():
         if args.eth_count > 0:
             print("=== ETH (BIP44) ===")
             eth = derive_eth_addresses(
-                args.mnemonic,
+                mnemonic,
                 passphrase,
                 account=args.eth_account,
                 start=args.eth_start,

@@ -161,3 +161,57 @@ class TestPBKDF2Optimization:
             pubkey = core.serP(point, compressed=False)
             single_addr = core.eth_address(pubkey)
             assert addr == single_addr
+
+
+class TestMnemonicInputModes:
+    """S-01: mnemonic must not be exposed in process list."""
+
+    def test_mnemonic_stdin(self):
+        proc = run_script(
+            "derive_addresses_offline.py",
+            "--mnemonic-stdin",
+            "--btc-count", "1",
+            input_text=ABANDON_12 + "\n",
+        )
+        assert proc.returncode == 0, proc.stderr
+        assert "bc1q" in proc.stdout
+
+    def test_mnemonic_prompt_flag_accepted(self):
+        """--mnemonic-prompt is accepted by argparse (verify via --help)."""
+        proc = run_script(
+            "derive_addresses_offline.py",
+            "--help",
+        )
+        assert proc.returncode == 0
+        assert "--mnemonic-prompt" in proc.stdout
+
+    def test_plaintext_mnemonic_warns(self):
+        proc = run_script(
+            "derive_addresses_offline.py",
+            "--mnemonic", ABANDON_12,
+            "--btc-count", "1",
+        )
+        assert proc.returncode == 0, proc.stderr
+        assert "WARNING" in proc.stderr
+        assert "mnemonic" in proc.stderr.lower()
+
+    def test_mnemonic_stdin_and_passphrase_stdin_reads_both_lines(self):
+        """First line = mnemonic, second line = passphrase."""
+        proc = run_script(
+            "derive_addresses_offline.py",
+            "--mnemonic-stdin",
+            "--passphrase-stdin",
+            "--btc-count", "1",
+            input_text=ABANDON_12 + "\nTREZOR\n",
+        )
+        assert proc.returncode == 0, proc.stderr
+        assert "bc1q" in proc.stdout
+
+    def test_mnemonic_and_mnemonic_stdin_mutually_exclusive(self):
+        proc = run_script(
+            "derive_addresses_offline.py",
+            "--mnemonic", ABANDON_12,
+            "--mnemonic-stdin",
+            "--btc-count", "1",
+        )
+        assert proc.returncode != 0
