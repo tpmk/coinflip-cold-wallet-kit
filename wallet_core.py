@@ -20,6 +20,7 @@ MAX_NON_HARDENED_INDEX = 0x7FFFFFFF
 MAX_BIP32_INDEX = 0xFFFFFFFF
 MAX_DERIVE_COUNT = 10000
 BECH32_CHARSET = "qpzry9x8gf2tvdw0s3jn54khce6mua7l"
+BASE58_ALPHABET = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
 PROJECT_DIR = Path(__file__).resolve().parent
 # Reference source: https://github.com/bitcoin/bips/blob/master/bip-0039/english.txt
 # Verified on 2026-02-24; pinning hash protects against silent local tampering.
@@ -387,6 +388,22 @@ def bech32_encode(hrp, data):
     return hrp + "1" + "".join(BECH32_CHARSET[d] for d in combined)
 
 
+def base58check_encode(payload: bytes) -> str:
+    full = payload + sha256(sha256(payload))[:4]
+    value = bytes_to_int(full)
+    encoded = ""
+    while value:
+        value, rem = divmod(value, 58)
+        encoded = BASE58_ALPHABET[rem] + encoded
+
+    leading_zeroes = 0
+    for byte in full:
+        if byte != 0:
+            break
+        leading_zeroes += 1
+    return ("1" * leading_zeroes) + encoded
+
+
 def convertbits(data, frombits, tobits, pad=True):
     acc = 0
     bits = 0
@@ -410,6 +427,8 @@ def convertbits(data, frombits, tobits, pad=True):
 
 
 def encode_segwit_address(hrp, witver, witprog):
+    if witver != 0:
+        raise ValueError("Only witness version 0 is supported")
     ret = convertbits(witprog, 8, 5)
     if ret is None:
         raise ValueError("convertbits failed: invalid witness program")
@@ -420,6 +439,15 @@ def encode_segwit_address(hrp, witver, witprog):
 def btc_p2wpkh_address(pubkey_compressed: bytes, hrp="bc") -> str:
     h160 = hash160(pubkey_compressed)
     return encode_segwit_address(hrp, 0, h160)
+
+
+def btc_p2pkh_address(pubkey_compressed: bytes, version_byte: int = 0x00) -> str:
+    if len(pubkey_compressed) != 33 or pubkey_compressed[0] not in (0x02, 0x03):
+        raise ValueError("Must be a 33-byte compressed pubkey")
+    if version_byte < 0 or version_byte > 0xFF:
+        raise ValueError(f"version_byte must be between 0 and 255, got {version_byte}")
+    payload = bytes([version_byte]) + hash160(pubkey_compressed)
+    return base58check_encode(payload)
 
 
 def eip55_checksum(hex_addr: str) -> str:
@@ -434,6 +462,8 @@ def eip55_checksum(hex_addr: str) -> str:
 
 
 def eth_address(pubkey_uncompressed: bytes) -> str:
+    if len(pubkey_uncompressed) != 65:
+        raise ValueError("Must be a 65-byte uncompressed pubkey")
     if pubkey_uncompressed[0] != 0x04:
         raise ValueError("Must be uncompressed pubkey (0x04 prefix)")
     ke = keccak_256(pubkey_uncompressed[1:])
@@ -494,6 +524,45 @@ def derive_btc_addresses(
     return results
 
 
+def derive_btc_legacy_addresses(
+    mnemonic: str,
+    passphrase: str = "",
+    account: int = 0,
+    change: int = 0,
+    start: int = 0,
+    count: int = 5,
+    version_byte: int = 0x00,
+    coin_type: int = 0,
+):
+    _require_index_range("coin_type", coin_type)
+    _require_index_range("account", account)
+    _require_index_range("change", change)
+    _require_index_range("start", start)
+    if version_byte < 0 or version_byte > 0xFF:
+        raise ValueError(f"version_byte must be between 0 and 255, got {version_byte}")
+    if count < 0:
+        raise ValueError(f"count must be >= 0, got {count}")
+    if count > MAX_DERIVE_COUNT:
+        raise ValueError(f"count must be <= {MAX_DERIVE_COUNT}, got {count}")
+    if count > 0:
+        _require_index_range("last index", start + count - 1)
+
+    seed = mnemonic_to_seed(mnemonic, passphrase)
+    k_master, _, c_master = bip32_master_key(seed)
+    prefix_path = f"m/44'/{coin_type}'/{account}'/{change}"
+    k_prefix, c_prefix = derive_priv_path(k_master, c_master, prefix_path)
+
+    results = []
+    for i in range(start, start + count):
+        k_child, _ = ckd_priv(k_prefix, c_prefix, i)
+        point = scalar_mult(k_child, G)
+        pubkey_compressed = serP(point, compressed=True)
+        address = btc_p2pkh_address(pubkey_compressed, version_byte=version_byte)
+        path = f"{prefix_path}/{i}"
+        results.append((path, address, pubkey_compressed.hex()))
+    return results
+
+
 def derive_eth_addresses(
     mnemonic: str,
     passphrase: str = "",
@@ -533,6 +602,7 @@ __all__ = [
     "mnemonic_to_seed",
     "validate_mnemonic",
     "derive_btc_addresses",
+    "derive_btc_legacy_addresses",
     "derive_eth_addresses",
     "derive_pubkey_at",
     "is_hex",

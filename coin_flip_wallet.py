@@ -16,6 +16,7 @@ import sys
 from wallet_core import (
     check_entropy_quality,
     derive_btc_addresses,
+    derive_btc_legacy_addresses,
     derive_eth_addresses,
     entropy_to_mnemonic,
     is_hex,
@@ -121,7 +122,15 @@ def show_completion_reminder():
     )
 
 
-def format_output(entropy_hex: str, mnemonic: str, btc_receive, btc_change, eth_addrs):
+def format_output(
+    entropy_hex: str,
+    mnemonic: str,
+    btc_receive,
+    btc_change,
+    btc_legacy_receive,
+    btc_legacy_change,
+    eth_addrs,
+):
     print("\n" + "=" * 60)
     print("熵值(Hex-256bit):", entropy_hex[:32])
     print("                 ", entropy_hex[32:])
@@ -136,6 +145,16 @@ def format_output(entropy_hex: str, mnemonic: str, btc_receive, btc_change, eth_
 
     print("  找零地址:")
     for i, (_, addr, _) in enumerate(btc_change):
+        print(f"    #{i}: {addr}")
+
+    print("=" * 60)
+    print("\n比特币地址 (Legacy P2PKH - 1):")
+    print("  接收地址:")
+    for i, (_, addr, _) in enumerate(btc_legacy_receive):
+        print(f"    #{i}: {addr}")
+
+    print("  找零地址:")
+    for i, (_, addr, _) in enumerate(btc_legacy_change):
         print(f"    #{i}: {addr}")
 
     print("=" * 60)
@@ -272,9 +291,23 @@ def main():
         print("正在派生地址...")
         btc_receive = derive_btc_addresses(mnemonic, passphrase, account=0, change=0, start=0, count=5)
         btc_change = derive_btc_addresses(mnemonic, passphrase, account=0, change=1, start=0, count=2)
+        btc_legacy_receive = derive_btc_legacy_addresses(
+            mnemonic, passphrase, account=0, change=0, start=0, count=5
+        )
+        btc_legacy_change = derive_btc_legacy_addresses(
+            mnemonic, passphrase, account=0, change=1, start=0, count=2
+        )
         eth_addrs = derive_eth_addresses(mnemonic, passphrase, account=0, start=0, count=5)
 
-        format_output(entropy_hex, mnemonic, btc_receive, btc_change, eth_addrs)
+        format_output(
+            entropy_hex,
+            mnemonic,
+            btc_receive,
+            btc_change,
+            btc_legacy_receive,
+            btc_legacy_change,
+            eth_addrs,
+        )
         show_completion_reminder()
 
     except FileNotFoundError as e:

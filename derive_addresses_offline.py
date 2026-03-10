@@ -15,7 +15,12 @@ import argparse
 import getpass
 import sys
 
-from wallet_core import derive_btc_addresses, derive_eth_addresses, validate_mnemonic
+from wallet_core import (
+    derive_btc_addresses,
+    derive_btc_legacy_addresses,
+    derive_eth_addresses,
+    validate_mnemonic,
+)
 
 UINT31_MAX = 0x7FFFFFFF
 MAX_DERIVE_COUNT = 10000
@@ -171,6 +176,21 @@ def main():
                 coin_type=0 if args.btc_hrp == "bc" else 1,
             )
             for path, addr, cpub in btc:
+                print(f"{path}  |  {addr}  |  pubkey(compressed)={cpub}")
+            print()
+
+            print("=== BTC Legacy (BIP44 P2PKH) ===")
+            btc_legacy = derive_btc_legacy_addresses(
+                mnemonic,
+                passphrase,
+                account=args.btc_account,
+                change=args.btc_change,
+                start=args.btc_start,
+                count=args.btc_count,
+                version_byte=0x00 if args.btc_hrp == "bc" else 0x6F,
+                coin_type=0 if args.btc_hrp == "bc" else 1,
+            )
+            for path, addr, cpub in btc_legacy:
                 print(f"{path}  |  {addr}  |  pubkey(compressed)={cpub}")
             print()
 

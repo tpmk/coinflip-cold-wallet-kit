@@ -41,7 +41,7 @@
   - 交互模式：模拟物理抛硬币输入（每轮 4 bit，共 64 轮）
   - 批量模式：直接输入 64 位 hex 熵值
   - 生成 BIP39 助记词
-  - 派生 BTC(BIP84) 与 ETH(BIP44) 地址
+  - 派生 BTC(BIP84 + Legacy P2PKH) 与 ETH(BIP44) 地址
 
 - `coin_to_bip39_hex.py`
   - 支持 `bits` 或 `hex` 输入
@@ -49,7 +49,7 @@
 
 - `derive_addresses_offline.py`
   - 输入助记词与可选 passphrase
-  - 派生 BTC/ETH 地址（watch-only 输出）
+  - 派生 BTC(BIP84 + Legacy P2PKH)/ETH 地址（watch-only 输出）
 
 ### 2.2 核心模块
 
@@ -67,6 +67,7 @@
 4. seed -> BIP32 主密钥 -> 子路径派生
 5. 地址编码：
    - BTC：BIP84 / bech32 / P2WPKH
+   - BTC Legacy：BIP44 / Base58Check / P2PKH
    - ETH：BIP44 / EIP-55 校验地址
 
 ## 4. 环境要求
@@ -139,7 +140,8 @@ uv run python coin_flip_wallet.py --interactive --passphrase-prompt
 
 - 256-bit 熵值（hex）
 - BIP39 助记词
-- BTC 接收地址 5 个 + 找零地址 2 个
+- BTC(BIP84) 接收地址 5 个 + 找零地址 2 个
+- BTC Legacy(P2PKH) 接收地址 5 个 + 找零地址 2 个
 - ETH 地址 5 个
 
 ### 6.2 `coin_to_bip39_hex.py`
@@ -278,3 +280,8 @@ uv run python -m pytest -q
 
 - `bip39-standalone.html` 来源仓库：`iancoleman/bip39`（https://github.com/iancoleman/bip39）
 - `wordlist.txt` 来源仓库：`bitcoin/bips`（https://github.com/bitcoin/bips/blob/master/bip-0039/english.txt）, SHA256: `2f5eed53a4727b4bf8880d8f3f199efc90e58503646d9ff8eff3a2ed3b24dbda`
+
+## 13. 实现边界
+
+- `encode_segwit_address` 当前仅支持 witness version `0`，也就是本项目使用的 BIP84 / P2WPKH 场景
+- 暂不支持 witness v1+（例如 Taproot / Bech32m）地址编码

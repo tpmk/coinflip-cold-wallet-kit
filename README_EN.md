@@ -41,14 +41,14 @@ Security rules:
   - Interactive coin-flip input (4 bits per round, 64 rounds)
   - Batch 64-hex entropy input
   - BIP39 mnemonic generation
-  - BTC(BIP84) + ETH(BIP44) address derivation
+  - BTC(BIP84 + legacy P2PKH) + ETH(BIP44) address derivation
 
 - `coin_to_bip39_hex.py`
   - Convert `bits` or `hex` entropy to BIP39 mnemonic
   - Output 11-bit indexes for manual verification
 
 - `derive_addresses_offline.py`
-  - Derive BTC/ETH addresses from mnemonic (+ optional passphrase)
+  - Derive BTC(BIP84 + legacy P2PKH)/ETH addresses from mnemonic (+ optional passphrase)
   - Watch-only output
 
 ### 2.2 Shared core
@@ -65,6 +65,7 @@ Security rules:
 4. Seed -> BIP32 master key -> child path derivation
 5. Address encoding:
    - BTC: BIP84 / bech32 / P2WPKH
+   - BTC legacy: BIP44 / Base58Check / P2PKH
    - ETH: BIP44 / EIP-55 checksum address
 
 ## 4. Requirements
@@ -133,7 +134,8 @@ Output:
 
 - 256-bit entropy (hex)
 - BIP39 mnemonic
-- BTC receive addresses (5) + change addresses (2)
+- BTC (BIP84) receive addresses (5) + change addresses (2)
+- BTC legacy (P2PKH) receive addresses (5) + change addresses (2)
 - ETH addresses (5)
 
 ### 6.2 `coin_to_bip39_hex.py`
@@ -250,3 +252,8 @@ You are fully responsible for any real-asset risk when using this project.
 
 - `bip39-standalone.html` source repo: `iancoleman/bip39` (https://github.com/iancoleman/bip39)
 - `wordlist.txt` source repo: `bitcoin/bips`（https://github.com/bitcoin/bips/blob/master/bip-0039/english.txt）, SHA256: `2f5eed53a4727b4bf8880d8f3f199efc90e58503646d9ff8eff3a2ed3b24dbda`
+
+## 13. Implementation Boundary
+
+- `encode_segwit_address` currently supports witness version `0` only, which matches this project's BIP84 / P2WPKH scope
+- Witness v1+ outputs (for example Taproot / Bech32m) are intentionally not supported yet

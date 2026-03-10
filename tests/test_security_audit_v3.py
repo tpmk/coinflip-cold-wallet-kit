@@ -163,6 +163,54 @@ class TestPBKDF2Optimization:
             assert addr == single_addr
 
 
+class TestAddressEncodingValidation:
+    def test_encode_segwit_address_rejects_non_v0(self):
+        with pytest.raises(ValueError, match="witness version 0"):
+            core.encode_segwit_address("bc", 1, [0] * 20)
+
+    def test_eth_address_rejects_wrong_length_pubkey(self):
+        bad_pubkey = bytes.fromhex("04" + "11" * 10)
+        with pytest.raises(ValueError, match="65-byte"):
+            core.eth_address(bad_pubkey)
+
+
+class TestLegacyP2PKHSupport:
+    def test_legacy_btc_address_matches_known_vector(self):
+        results = core.derive_btc_legacy_addresses(ABANDON_12, "", count=1)
+        path, addr, _ = results[0]
+        assert path == "m/44'/0'/0'/0/0"
+        assert addr == "1LqBGSKuX5yYUonjxT5qGfpUsXKYYWeabA"
+
+    def test_multiple_legacy_btc_addresses_consistent(self):
+        results = core.derive_btc_legacy_addresses(ABANDON_12, "", count=3)
+        for path, addr, pubhex in results:
+            point = core.derive_pubkey_at(ABANDON_12, "", path)
+            pubkey = core.serP(point, compressed=True)
+            single_addr = core.btc_p2pkh_address(pubkey)
+            assert addr == single_addr
+            assert pubhex == pubkey.hex()
+
+    def test_coin_flip_wallet_shows_legacy_addresses(self):
+        proc = run_script(
+            "coin_flip_wallet.py",
+            "--hex", "00" * 32,
+            "--yes",
+        )
+        assert proc.returncode == 0, proc.stderr
+        assert "Legacy" in proc.stdout
+        assert "1" in proc.stdout
+
+    def test_derive_addresses_offline_shows_legacy_addresses(self):
+        proc = run_script(
+            "derive_addresses_offline.py",
+            "--mnemonic", ABANDON_12,
+            "--btc-count", "1",
+        )
+        assert proc.returncode == 0, proc.stderr
+        assert "BTC Legacy" in proc.stdout
+        assert "1LqBGSKuX5yYUonjxT5qGfpUsXKYYWeabA" in proc.stdout
+
+
 class TestMnemonicInputModes:
     """S-01: mnemonic must not be exposed in process list."""
 
