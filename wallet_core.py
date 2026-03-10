@@ -185,6 +185,43 @@ def is_hex(s: str) -> bool:
     return all(c in "0123456789abcdefABCDEF" for c in s)
 
 
+def check_entropy_quality(hex_entropy: str) -> list[str]:
+    """Return a list of warnings if entropy looks pathologically weak."""
+    hex_clean = hex_entropy.strip().lower().removeprefix("0x")
+    warnings: list[str] = []
+
+    # All identical hex digits
+    if len(set(hex_clean)) <= 1:
+        warnings.append("All bytes are identical — entropy is effectively zero")
+        return warnings
+
+    # Repeating 1-byte pattern (e.g., "abababab...")
+    if len(hex_clean) >= 4:
+        two_char = hex_clean[:2]
+        if hex_clean == two_char * (len(hex_clean) // 2):
+            warnings.append(
+                f"Entropy is a repeating byte pattern (0x{two_char}) — effectively ~8 bits of entropy"
+            )
+            return warnings
+
+    # Severe bit bias: more than 87.5% of bits are 0 or 1
+    try:
+        value = int(hex_clean, 16)
+        total_bits = len(hex_clean) * 4
+        ones = bin(value).count("1")
+        zeros = total_bits - ones
+        ratio = max(ones, zeros) / total_bits
+        if ratio > 0.875:
+            dominant = "1" if ones > zeros else "0"
+            warnings.append(
+                f"Severe bit bias: {ratio:.0%} of bits are '{dominant}' — very low entropy"
+            )
+    except ValueError:
+        pass
+
+    return warnings
+
+
 def bits_from_hex(hex_str: str) -> str:
     hex_str = hex_str.lower().removeprefix("0x")
     if len(hex_str) % 2 != 0:
@@ -477,6 +514,7 @@ def derive_eth_addresses(
 
 
 __all__ = [
+    "check_entropy_quality",
     "entropy_to_mnemonic",
     "mnemonic_to_seed",
     "validate_mnemonic",

@@ -14,6 +14,7 @@ import getpass
 import sys
 
 from wallet_core import (
+    check_entropy_quality,
     derive_btc_addresses,
     derive_eth_addresses,
     entropy_to_mnemonic,
@@ -254,6 +255,15 @@ def main():
             entropy_hex = collector.collect_interactive()
         else:
             entropy_hex = collector.collect_batch(args.hex)
+
+        entropy_warnings = check_entropy_quality(entropy_hex)
+        if entropy_warnings:
+            for w in entropy_warnings:
+                print(f"WARNING: {w}", file=sys.stderr)
+            print(
+                "WARNING: 熵值质量极差，生成的钱包极不安全！",
+                file=sys.stderr,
+            )
 
         print("\n正在生成助记词...")
         mnemonic = entropy_to_mnemonic(entropy_hex, args.wordlist)

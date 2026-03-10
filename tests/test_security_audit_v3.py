@@ -88,3 +88,42 @@ class TestCountUpperBound:
     def test_core_rejects_excessive_eth_count(self):
         with pytest.raises(ValueError, match="count"):
             core.derive_eth_addresses(ABANDON_12, "", count=10001)
+
+
+class TestEntropyQualityWarning:
+    """S-04: warn on pathologically weak entropy."""
+
+    def test_all_zeros_warns(self):
+        warnings = core.check_entropy_quality("00" * 32)
+        assert len(warnings) > 0
+
+    def test_all_ones_warns(self):
+        warnings = core.check_entropy_quality("ff" * 32)
+        assert len(warnings) > 0
+
+    def test_repeated_pattern_warns(self):
+        warnings = core.check_entropy_quality("ab" * 32)
+        assert len(warnings) > 0
+
+    def test_good_entropy_no_warning(self):
+        warnings = core.check_entropy_quality(
+            "a3f7c2e9b1d486520fa3e7c1b9d2f5e8a4c6d1f3b7e2a5c8d9f1e4b6a2c7d3f8"
+        )
+        assert len(warnings) == 0
+
+    def test_cli_shows_entropy_warning(self):
+        proc = run_script(
+            "coin_flip_wallet.py",
+            "--hex", "00" * 32,
+            "--yes",
+        )
+        assert proc.returncode == 0
+        assert "WARNING" in proc.stderr
+
+    def test_coin_to_bip39_shows_entropy_warning(self):
+        proc = run_script(
+            "coin_to_bip39_hex.py",
+            "--hex", "00" * 32,
+        )
+        assert proc.returncode == 0
+        assert "WARNING" in proc.stderr

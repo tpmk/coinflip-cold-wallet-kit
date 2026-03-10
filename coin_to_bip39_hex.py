@@ -74,6 +74,12 @@ def main():
     if hex_s is None:
         hex_s = bits_to_hex(bits_s)
 
+    entropy_warnings = core.check_entropy_quality(hex_s)
+    if entropy_warnings:
+        for w in entropy_warnings:
+            print(f"WARNING: {w}", file=sys.stderr)
+        print("WARNING: Entropy quality is extremely poor — wallet will be insecure!", file=sys.stderr)
+
     mnemonic = entropy_to_mnemonic(hex_s, args.wordlist)
 
     # Derive display values arithmetically (no duplicate crypto ops)
