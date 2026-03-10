@@ -129,8 +129,6 @@ def point_add(pt, qt):
             return None
         m = (3 * x1 * x1) * pow(2 * y1, P - 2, P) % P
     else:
-        if x1 == x2:
-            return None
         m = (y2 - y1) * pow(x2 - x1, P - 2, P) % P
 
     x3 = (m * m - x1 - x2) % P
