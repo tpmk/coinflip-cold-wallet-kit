@@ -477,12 +477,19 @@ def derive_btc_addresses(
     if count > 0:
         _require_index_range("last index", start + count - 1)
 
+    # Derive seed and common path prefix once (avoids N × PBKDF2)
+    seed = mnemonic_to_seed(mnemonic, passphrase)
+    k_master, _, c_master = bip32_master_key(seed)
+    prefix_path = f"m/84'/{coin_type}'/{account}'/{change}"
+    k_prefix, c_prefix = derive_priv_path(k_master, c_master, prefix_path)
+
     results = []
     for i in range(start, start + count):
-        path = f"m/84'/{coin_type}'/{account}'/{change}/{i}"
-        point = derive_pubkey_at(mnemonic, passphrase, path)
+        k_child, _ = ckd_priv(k_prefix, c_prefix, i)
+        point = scalar_mult(k_child, G)
         pubkey_compressed = serP(point, compressed=True)
         address = btc_p2wpkh_address(pubkey_compressed, hrp=hrp)
+        path = f"{prefix_path}/{i}"
         results.append((path, address, pubkey_compressed.hex()))
     return results
 
@@ -503,12 +510,19 @@ def derive_eth_addresses(
     if count > 0:
         _require_index_range("last index", start + count - 1)
 
+    # Derive seed and common path prefix once (avoids N × PBKDF2)
+    seed = mnemonic_to_seed(mnemonic, passphrase)
+    k_master, _, c_master = bip32_master_key(seed)
+    prefix_path = f"m/44'/60'/{account}'/0"
+    k_prefix, c_prefix = derive_priv_path(k_master, c_master, prefix_path)
+
     results = []
     for i in range(start, start + count):
-        path = f"m/44'/60'/{account}'/0/{i}"
-        point = derive_pubkey_at(mnemonic, passphrase, path)
+        k_child, _ = ckd_priv(k_prefix, c_prefix, i)
+        point = scalar_mult(k_child, G)
         pubkey_uncompressed = serP(point, compressed=False)
         address = eth_address(pubkey_uncompressed)
+        path = f"{prefix_path}/{i}"
         results.append((path, address))
     return results
 

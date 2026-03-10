@@ -127,3 +127,37 @@ class TestEntropyQualityWarning:
         )
         assert proc.returncode == 0
         assert "WARNING" in proc.stderr
+
+
+class TestPBKDF2Optimization:
+    """S-02: derive functions must produce identical results after PBKDF2 optimization."""
+
+    def test_btc_addresses_match_known_vector(self):
+        results = core.derive_btc_addresses(ABANDON_12, "", count=1)
+        path, addr, _ = results[0]
+        assert path == "m/84'/0'/0'/0/0"
+        assert addr == "bc1qcr8te4kr609gcawutmrza0j4xv80jy8z306fyu"
+
+    def test_eth_addresses_match_known_vector(self):
+        results = core.derive_eth_addresses(ABANDON_12, "", count=1)
+        path, addr = results[0]
+        assert path == "m/44'/60'/0'/0/0"
+        assert addr == "0x9858EfFD232B4033E47d90003D41EC34EcaEda94"
+
+    def test_multiple_btc_addresses_consistent(self):
+        """Verify N addresses match individual derive_pubkey_at calls."""
+        results = core.derive_btc_addresses(ABANDON_12, "", count=3)
+        for path, addr, pubhex in results:
+            point = core.derive_pubkey_at(ABANDON_12, "", path)
+            pubkey = core.serP(point, compressed=True)
+            single_addr = core.btc_p2wpkh_address(pubkey)
+            assert addr == single_addr
+
+    def test_multiple_eth_addresses_consistent(self):
+        """Verify N ETH addresses match individual derive_pubkey_at calls."""
+        results = core.derive_eth_addresses(ABANDON_12, "", count=3)
+        for path, addr in results:
+            point = core.derive_pubkey_at(ABANDON_12, "", path)
+            pubkey = core.serP(point, compressed=False)
+            single_addr = core.eth_address(pubkey)
+            assert addr == single_addr
